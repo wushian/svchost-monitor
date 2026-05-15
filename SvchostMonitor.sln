@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36908.2 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SvchostMonitor", "SvchostMonitor.csproj", "{6BD7A023-1C62-C6B6-68F9-B781B90FE4B1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6BD7A023-1C62-C6B6-68F9-B781B90FE4B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BD7A023-1C62-C6B6-68F9-B781B90FE4B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BD7A023-1C62-C6B6-68F9-B781B90FE4B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BD7A023-1C62-C6B6-68F9-B781B90FE4B1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4D7299B2-6F3C-44E3-AD4C-90D9DC6676E7}
+	EndGlobalSection
+EndGlobal
