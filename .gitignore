@@ -10,9 +10,13 @@ logs/
 ## User-specific settings
 *.user
 .vs/
+*.sln.user
 
 ## Rider / JetBrains
 .idea/
+
+## Claude Code local settings
+.claude/
 
 ## Secrets — never commit real tokens
 # sys.ini is committed as a template; keep BotToken/ChatId as placeholder values
