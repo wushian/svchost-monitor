@@ -39,6 +39,8 @@ A .NET 8 Windows Service that monitors a target process and automatically kills 
 ProcessName=svchost
 MemThresholdGb=2.0
 CheckIntervalSeconds=300
+; 自訂備註，會顯示在 Telegram 通知中，留空則不顯示
+Remark=產線A機台
 
 [Telegram]
 BotToken=YOUR_BOT_TOKEN_HERE
@@ -114,9 +116,12 @@ Logs are written to `logs\monitor-YYYYMMDD.log` in the same directory as the exe
 📡 IP:   192.168.1.50
 🕐 Time: 2026-05-15 10:00:00
 📋 Process: svchost
+📝 Remark: 產線A機台
 
 • PID 1234 | 2.31 GB → KILLED
 ```
+
+> `Remark` 欄位留空時不會顯示在通知中。
 
 ### Host IP Detection
 

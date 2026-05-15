@@ -9,6 +9,7 @@ public sealed class MonitorOptions
     public string ProcessName { get; set; } = "svchost";
     public double MemThresholdGb { get; set; } = 2.0;
     public int CheckIntervalSeconds { get; set; } = 300;
+    public string Remark { get; set; } = string.Empty;
 }
 
 public sealed class TelegramOptions

@@ -31,6 +31,7 @@ public static class TelegramNotifier
     public static async Task SendAsync(
         TelegramOptions opts,
         string processName,
+        string remark,
         IReadOnlyList<KilledProcessInfo> killed,
         ILogger logger,
         CancellationToken ct = default)
@@ -51,6 +52,8 @@ public static class TelegramNotifier
         sb.AppendLine($"\U0001f4e1 IP:   `{hostIp}`");
         sb.AppendLine($"\U0001f550 Time: `{ts}`");
         sb.AppendLine($"\U0001f4cb Process: `{processName}`");
+        if (!string.IsNullOrWhiteSpace(remark))
+            sb.AppendLine($"\U0001f4dd Remark: {remark}");
         sb.AppendLine();
         foreach (var p in killed)
             sb.AppendLine($"• PID `{p.Pid}` | `{p.MemoryGb:F2} GB` → KILLED");

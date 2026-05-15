@@ -36,7 +36,7 @@ public sealed class Worker : BackgroundService
                 if (killed.Count > 0)
                 {
                     await TelegramNotifier.SendAsync(
-                        _telegram, _monitor.ProcessName, killed, _logger, stoppingToken);
+                        _telegram, _monitor.ProcessName, _monitor.Remark, killed, _logger, stoppingToken);
                 }
             }
             catch (Exception ex)
