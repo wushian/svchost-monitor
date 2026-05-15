@@ -7,7 +7,7 @@ A .NET 8 Windows Service that monitors a target process and automatically kills 
 - Monitors any Windows process by name (default: `svchost.exe`)
 - Configurable memory threshold (default: 2 GB)
 - Configurable check interval (default: every 5 minutes)
-- Telegram Bot notification on kill
+- Telegram Bot notification on kill, including host name and IP for easy source identification
 - Daily rolling log file (retained 30 days)
 - Settings managed via `sys.ini` with CLI argument override support
 - Runs as a Windows Service under `LocalSystem` account
@@ -111,8 +111,19 @@ Logs are written to `logs\monitor-YYYYMMDD.log` in the same directory as the exe
 ```
 🚨 Process Memory Alert
 🖥 Host: DESKTOP-ABC123
+📡 IP:   192.168.1.50
 🕐 Time: 2026-05-15 10:00:00
 📋 Process: svchost
 
 • PID 1234 | 2.31 GB → KILLED
 ```
+
+### Host IP Detection
+
+The IP address shown in the alert is the machine's outbound network interface IP, resolved by:
+
+1. Opening a UDP socket toward `8.8.8.8:80` (no packet is actually sent) to determine which local interface the OS would use for external traffic
+2. Fallback: first non-loopback IPv4 address returned by `Dns.GetHostAddresses()`
+3. Final fallback: displays `unknown`
+
+This ensures the correct IP is shown on multi-NIC machines (e.g., a server with both internal and external interfaces).
