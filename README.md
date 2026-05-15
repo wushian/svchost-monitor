@@ -11,6 +11,7 @@ A .NET 8 Windows Service that monitors a target process and automatically kills 
 - Daily rolling log file (retained 30 days)
 - Settings managed via `sys.ini` with CLI argument override support
 - Runs as a Windows Service under `LocalSystem` account
+- Built-in `--test` flag to verify Telegram settings without starting the service
 
 ## Project Structure
 
@@ -77,6 +78,23 @@ Log on as     : Local System
 ## Uninstall
 
 Run `uninstall_service.bat` as Administrator.
+
+## Test Telegram Notification
+
+Before installing as a service, verify that `BotToken` and `ChatId` in `sys.ini` are correct:
+
+```bat
+SvchostMonitor.exe --test
+```
+
+A mock alert (PID 9999 / 2.55 GB) is sent immediately and the program exits. Expected output:
+
+```
+11:08:44 [INF] Sending test Telegram notification …
+11:08:46 [INF] Telegram notification sent (1 process(es) killed)
+```
+
+The test message includes the real host name, IP, and `Remark` from `sys.ini`, so the full notification format can be confirmed in one shot.
 
 ## CLI Argument Override
 
