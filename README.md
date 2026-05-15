@@ -54,47 +54,122 @@ ChatId=YOUR_CHAT_ID_HERE
 2. Get your **Chat ID** via [@userinfobot](https://t.me/userinfobot)
 3. Fill in `BotToken` and `ChatId` in `sys.ini`
 
-## Build
+## Installation
 
-```bash
+### Step 1 — Build
+
+Publish a self-contained executable (no .NET runtime required on the target machine):
+
+```bat
 dotnet publish SvchostMonitor.csproj -c Release -r win-x64 --self-contained true -o publish
 ```
 
-## Installation
+Output folder `publish\` will contain `SvchostMonitor.exe` and all dependencies.
 
-1. Copy `SvchostMonitor.exe` and `sys.ini` to the same folder
-2. Edit `sys.ini` — set `BotToken` and `ChatId`
-3. Run `install_service.bat` **as Administrator**
+### Step 2 — Deploy
 
-The service is registered as `ProcessMemMonitor`, set to auto-start under `LocalSystem`.
+Copy the following two files to the target machine (any folder, e.g. `C:\Tools\SvchostMonitor\`):
 
+| File | Description |
+|------|-------------|
+| `SvchostMonitor.exe` | Main executable |
+| `sys.ini` | Configuration file |
+
+### Step 3 — Configure `sys.ini`
+
+Edit `sys.ini` on the target machine:
+
+```ini
+[Monitor]
+ProcessName=svchost
+MemThresholdGb=2.0
+CheckIntervalSeconds=300
+Remark=產線A機台          ; optional label shown in Telegram alert
+
+[Telegram]
+BotToken=YOUR_BOT_TOKEN_HERE
+ChatId=YOUR_CHAT_ID_HERE
 ```
-Services name : ProcessMemMonitor
-Display name  : Process Memory Monitor
-Start type    : Automatic
-Log on as     : Local System
-```
 
-## Uninstall
+### Step 4 — Test Telegram (optional but recommended)
 
-Run `uninstall_service.bat` as Administrator.
-
-## Test Telegram Notification
-
-Before installing as a service, verify that `BotToken` and `ChatId` in `sys.ini` are correct:
+Verify the Telegram settings before installing the service:
 
 ```bat
 SvchostMonitor.exe --test
 ```
 
-A mock alert (PID 9999 / 2.55 GB) is sent immediately and the program exits. Expected output:
-
+Expected output:
 ```
 11:08:44 [INF] Sending test Telegram notification …
 11:08:46 [INF] Telegram notification sent (1 process(es) killed)
 ```
 
-The test message includes the real host name, IP, and `Remark` from `sys.ini`, so the full notification format can be confirmed in one shot.
+### Step 5 — Install as Windows Service
+
+Run `install_service.bat` **as Administrator**:
+
+```bat
+install_service.bat
+```
+
+The script will:
+1. Verify `SvchostMonitor.exe` exists in the same folder
+2. Remove the existing service if already installed
+3. Register a new service via `sc create`
+4. Start the service automatically
+
+Registered service properties:
+
+```
+Service name : ProcessMemMonitor
+Display name : Process Memory Monitor
+Start type   : Automatic
+Log on as    : Local System
+```
+
+> `LocalSystem` is required to have sufficient privileges to kill `svchost.exe`.
+
+### Step 6 — Verify
+
+Check that the service is running:
+
+```bat
+sc query ProcessMemMonitor
+```
+
+Or open **Services** (`services.msc`) and look for **Process Memory Monitor**.
+
+---
+
+## Uninstall
+
+Run `uninstall_service.bat` as Administrator:
+
+```bat
+uninstall_service.bat
+```
+
+This stops and removes the `ProcessMemMonitor` service. The executable and `sys.ini` are left in place.
+
+---
+
+## Reconfigure Without Reinstalling
+
+Edit `sys.ini` and restart the service — no reinstall needed:
+
+```bat
+net stop ProcessMemMonitor
+net start ProcessMemMonitor
+```
+
+To change startup arguments after installation (e.g. override threshold):
+
+```bat
+sc config ProcessMemMonitor binPath= "\"C:\Tools\SvchostMonitor\SvchostMonitor.exe\" --Monitor:MemThresholdGb 3.0"
+net stop ProcessMemMonitor
+net start ProcessMemMonitor
+```
 
 ## CLI Argument Override
 
