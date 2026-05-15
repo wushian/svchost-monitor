@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Serilog;
 using SvchostMonitor;
 
@@ -14,6 +15,29 @@ Log.Logger = new LoggerConfiguration()
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
+// --test mode: send a test Telegram notification and exit
+if (args.Length > 0 && args[0].Equals("--test", StringComparison.OrdinalIgnoreCase))
+{
+    var cfg = new ConfigurationBuilder()
+        .AddIniFile(Path.Combine(AppContext.BaseDirectory, "sys.ini"), optional: false)
+        .AddEnvironmentVariables()
+        .AddCommandLine(args.Skip(1).ToArray())
+        .Build();
+
+    var monitor  = cfg.GetSection(MonitorOptions.SectionName).Get<MonitorOptions>()  ?? new MonitorOptions();
+    var telegram = cfg.GetSection(TelegramOptions.SectionName).Get<TelegramOptions>() ?? new TelegramOptions();
+
+    var dummy = new List<KilledProcessInfo> { new(9999, 2.55) };
+
+    using var loggerFactory = LoggerFactory.Create(b => b.AddSerilog());
+    var testLogger = loggerFactory.CreateLogger("Test");
+
+    Log.Information("Sending test Telegram notification …");
+    await TelegramNotifier.SendAsync(telegram, monitor.ProcessName, monitor.Remark, dummy, testLogger);
+    Log.CloseAndFlush();
+    return 0;
+}
+
 try
 {
     Log.Information("========== Process Memory Monitor starting ==========");
@@ -23,7 +47,6 @@ try
         .UseSerilog()
         .ConfigureAppConfiguration((_, config) =>
         {
-            // Replace default sources with sys.ini as the sole file-based config.
             // Priority chain (low → high): sys.ini < env vars < CLI args
             config.Sources.Clear();
             config.AddIniFile(
