@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
@@ -6,6 +8,25 @@ namespace SvchostMonitor;
 public static class TelegramNotifier
 {
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    private static string GetLocalIp()
+    {
+        try
+        {
+            using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            socket.Connect("8.8.8.8", 80);
+            return ((IPEndPoint)socket.LocalEndPoint!).Address.ToString();
+        }
+        catch
+        {
+            // Fallback: first non-loopback IPv4
+            foreach (var addr in Dns.GetHostAddresses(Dns.GetHostName()))
+                if (addr.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(addr))
+                    return addr.ToString();
+
+            return "unknown";
+        }
+    }
 
     public static async Task SendAsync(
         TelegramOptions opts,
@@ -20,12 +41,14 @@ public static class TelegramNotifier
             return;
         }
 
-        var host = Environment.MachineName;
-        var ts   = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        var hostName = Environment.MachineName;
+        var hostIp   = GetLocalIp();
+        var ts       = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
         var sb = new StringBuilder();
         sb.AppendLine($"\U0001f6a8 *Process Memory Alert*");
-        sb.AppendLine($"\U0001f5a5 Host: `{host}`");
+        sb.AppendLine($"\U0001f5a5 Host: `{hostName}`");
+        sb.AppendLine($"\U0001f4e1 IP:   `{hostIp}`");
         sb.AppendLine($"\U0001f550 Time: `{ts}`");
         sb.AppendLine($"\U0001f4cb Process: `{processName}`");
         sb.AppendLine();
