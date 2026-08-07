@@ -1,0 +1,157 @@
+name: Release
+
+# 推送 v 開頭的 tag(例如 v0.1.0)時建置並發佈 GitHub Release;
+# 手動執行(workflow_dispatch)則只產生 workflow artifact 供測試,不會建立 Release。
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本號(例如 0.1.0);留空則使用 0.0.<run_number>'
+        required: false
+        default: ''
+
+env:
+  PROJECT: SvchostMonitor.csproj
+  ARTIFACT: SvchostMonitor
+  CONFIGURATION: Release
+  RUNTIME: win-x64
+
+jobs:
+  release:
+    # 本專案以 System.Management(WMI)查詢 Win32_Service,並標記 [SupportedOSPlatform("windows")],
+    # TFM 亦為 net8.0-windows —— 必須用 Windows runner,Linux runner 會建置失敗。
+    runs-on: windows-latest
+
+    permissions:
+      contents: write   # 建立 Release 需要
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: 取得原始碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # tag 觸發時 github.ref_name 是 tag 名;手動觸發時是分支名,故需以 ref_type 分辨。
+      - name: 決定版本號
+        id: ver
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $v = '${{ github.ref_name }}' -replace '^v', ''
+          } elseif ('${{ github.event.inputs.version }}') {
+            $v = '${{ github.event.inputs.version }}'
+          } else {
+            $v = '0.0.${{ github.run_number }}'
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "name=${{ env.ARTIFACT }}-$v-${{ env.RUNTIME }}" >> $env:GITHUB_OUTPUT
+          Write-Host "版本號:$v"
+
+      # RID-specific 建置需先以相同 RID 還原,後續 --no-restore 才不會失敗。
+      - name: 還原相依套件
+        run: dotnet restore ${{ env.PROJECT }} -r ${{ env.RUNTIME }}
+
+      - name: 建置
+        run: >
+          dotnet build ${{ env.PROJECT }}
+          -c ${{ env.CONFIGURATION }}
+          -r ${{ env.RUNTIME }}
+          --no-restore
+          --nologo
+          -p:Version=${{ steps.ver.outputs.version }}
+
+      # 目標機器需自行安裝 .NET 8 Runtime。
+      - name: 發佈(framework-dependent)
+        run: >
+          dotnet publish ${{ env.PROJECT }}
+          -c ${{ env.CONFIGURATION }}
+          -r ${{ env.RUNTIME }}
+          --self-contained false
+          --no-restore
+          --nologo
+          -p:Version=${{ steps.ver.outputs.version }}
+          -o publish/framework-dependent
+
+      # 自帶執行階段且合併為單一 exe —— 對應 README 的「複製 exe + sys.ini 兩個檔」佈署方式。
+      - name: 發佈(self-contained,單一檔案)
+        run: >
+          dotnet publish ${{ env.PROJECT }}
+          -c ${{ env.CONFIGURATION }}
+          -r ${{ env.RUNTIME }}
+          --self-contained true
+          --nologo
+          -p:Version=${{ steps.ver.outputs.version }}
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/self-contained
+
+      # 兩支 .bat 不在 csproj 的 Content 清單裡,dotnet publish 不會帶出來;
+      # 少了它們使用者就無法安裝服務,必須在這裡明確複製進去。
+      - name: 補入服務安裝腳本
+        run: |
+          foreach ($dir in 'publish/framework-dependent', 'publish/self-contained') {
+            Copy-Item install_service.bat, uninstall_service.bat -Destination $dir
+          }
+
+      # 佈署包只會有 sys.ini.example;sys.ini 已被 gitignore,CI 上不存在,
+      # 因此真實 token 不可能被打包出去。使用者需在目標機器自行複製並填值。
+      - name: 檢查佈署包內容並確認未夾帶祕密
+        run: |
+          foreach ($dir in 'publish/framework-dependent', 'publish/self-contained') {
+            Write-Host "--- $dir ---"
+            Get-ChildItem $dir -File |
+              Where-Object { $_.Extension -ne '.dll' } |
+              ForEach-Object { Write-Host ("  {0}  {1:N0} KB" -f $_.Name, ($_.Length / 1KB)) }
+
+            if (Test-Path "$dir/sys.ini") {
+              Write-Error "sys.ini 不應出現在佈署包中(可能夾帶真實 token)"
+              exit 1
+            }
+            foreach ($required in 'SvchostMonitor.exe', 'sys.ini.example', 'install_service.bat', 'uninstall_service.bat') {
+              if (-not (Test-Path "$dir/$required")) {
+                Write-Error "佈署包缺少 $required"
+                exit 1
+              }
+            }
+          }
+
+      - name: 打包
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Compress-Archive -Path publish/framework-dependent/* `
+                           -DestinationPath "artifacts/${{ steps.ver.outputs.name }}.zip"
+          Compress-Archive -Path publish/self-contained/* `
+                           -DestinationPath "artifacts/${{ steps.ver.outputs.name }}-self-contained.zip"
+          Get-ChildItem artifacts | ForEach-Object {
+            Write-Host ("{0}  {1:N1} MB" -f $_.Name, ($_.Length / 1MB))
+          }
+
+      - name: 上傳 workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.ver.outputs.name }}
+          path: artifacts/*.zip
+          retention-days: 30
+
+      # 只有 tag 觸發才建立 Release;使用 runner 內建的 gh CLI,不依賴第三方 action。
+      - name: 建立 GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # PowerShell 不會為原生指令展開萬用字元,需先自行列出檔案再以陣列傳入;
+          # 直接寫 artifacts/*.zip 會建出「沒有任何附件」的 Release,且 workflow 仍是綠燈。
+          $assets = (Get-ChildItem artifacts/*.zip).FullName
+          gh release create "${{ github.ref_name }}" $assets `
+            --title "${{ github.ref_name }}" `
+            --verify-tag `
+            --generate-notes
