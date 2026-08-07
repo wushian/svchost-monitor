@@ -21,22 +21,22 @@ public sealed class Worker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation(
-            "Worker started — Process={Process} Threshold={Threshold} GB Interval={Interval} s",
-            _monitor.ProcessName, _monitor.MemThresholdGb, _monitor.CheckIntervalSeconds);
+            "Worker started — Process={Process} Threshold={Threshold} GB Interval={Interval} s "
+            + "DryRun={DryRun} ProtectedServices={Protected}",
+            _monitor.ProcessName, _monitor.MemThresholdGb, _monitor.CheckIntervalSeconds,
+            _monitor.DryRun,
+            _monitor.ParseProtectedServices() is { Count: > 0 } p ? string.Join(", ", p) : "(none — guard disabled)");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var killed = ProcessMonitor.KillOverLimit(
-                    _monitor.ProcessName,
-                    _monitor.MemThresholdGb,
-                    _logger);
+                var killed = ProcessMonitor.KillOverLimit(_monitor, _logger);
 
                 if (killed.Count > 0)
                 {
                     await TelegramNotifier.SendAsync(
-                        _telegram, _monitor.ProcessName, _monitor.Remark, killed, _logger, stoppingToken);
+                        _telegram, _monitor, killed, _logger, stoppingToken);
                 }
             }
             catch (Exception ex)

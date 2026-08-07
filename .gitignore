@@ -19,4 +19,7 @@ logs/
 .claude/
 
 ## Secrets — never commit real tokens
-# sys.ini is committed as a template; keep BotToken/ChatId as placeholder values
+# sys.ini holds the real BotToken/ChatId and is NOT tracked.
+# The tracked template is sys.ini.example; copy it to sys.ini and fill in locally,
+# or supply secrets via environment variables (Telegram__BotToken / Telegram__ChatId).
+sys.ini

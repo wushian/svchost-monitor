@@ -33,7 +33,7 @@ if (args.Length > 0 && args[0].Equals("--test", StringComparison.OrdinalIgnoreCa
     var testLogger = loggerFactory.CreateLogger("Test");
 
     Log.Information("Sending test Telegram notification …");
-    await TelegramNotifier.SendAsync(telegram, monitor.ProcessName, monitor.Remark, dummy, testLogger);
+    await TelegramNotifier.SendAsync(telegram, monitor, dummy, testLogger);
     Log.CloseAndFlush();
     return 0;
 }

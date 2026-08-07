@@ -1,0 +1,41 @@
+; ============================================================
+; Process Memory Monitor — 設定檔範本
+;
+; 複製本檔為 sys.ini 後填入實際值。sys.ini 已被 .gitignore 排除，
+; 不會進版控；請勿把真實 BotToken 寫回本範本檔。
+;
+; 優先順序（低→高）：sys.ini < 環境變數 < 命令列參數
+; 環境變數寫法（推薦用於存放機密）：
+;   setx Telegram__BotToken "123456:ABC..."
+;   setx Telegram__ChatId   "-1001234567890"
+; 命令列覆蓋範例：
+;   SvchostMonitor.exe --Monitor:ProcessName notepad --Monitor:MemThresholdGb 0.5
+; ============================================================
+
+[Monitor]
+; 要監測的 Process 名稱（不含 .exe）
+ProcessName=svchost
+; 記憶體上限（GB），超過即 Kill（比較對象為 WorkingSet64）
+MemThresholdGb=2.0
+; 檢查間隔（秒）
+CheckIntervalSeconds=300
+; 自訂備註，會顯示在 Telegram 通知中，留空則不顯示
+Remark=
+
+; 演練模式：true 時只記錄「會殺掉誰」並照常發 Telegram，但不真的 Kill。
+; 第一次部署或調整門檻後，建議先跑一輪 DryRun 確認鎖定的對象正確。
+DryRun=false
+
+; 保護名單：託管以下任一服務的行程一律不殺（不分大小寫，逗號分隔）。
+; 留空 = 停用保護（不建議，除非監測目標不是 svchost）。
+;   前 7 個（DcomLaunch…SamSs）殺掉會觸發 CRITICAL_PROCESS_DIED 藍屏重開
+;   其餘殺掉不會藍屏，但會讓登入、網路、排程、事件記錄等功能失效
+; 這份清單是「起始值」而非完整清單 —— svchost 託管的服務因機器而異，
+; 請先用 DryRun=true 跑一輪，確認實際被鎖定的服務清單再關閉演練模式。
+ProtectedServices=DcomLaunch,RPCSS,LSM,BrokerInfrastructure,PlugPlay,Power,SamSs,LanmanServer,LanmanWorkstation,EventLog,Winmgmt,Schedule,CryptSvc,Dnscache,Dhcp,nsi,NlaSvc,ProfSvc,UserManager,gpsvc,Themes,AudioEndpointBuilder
+
+[Telegram]
+; 從 @BotFather 取得
+BotToken=YOUR_BOT_TOKEN_HERE
+; 目標 Chat ID（可用 @userinfobot 查詢，群組為負數）
+ChatId=YOUR_CHAT_ID_HERE

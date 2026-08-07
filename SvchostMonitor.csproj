@@ -12,13 +12,19 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Ini"       Version="8.0.0" />
+    <PackageReference Include="System.Management"                            Version="8.0.0" />
     <PackageReference Include="Serilog.Extensions.Hosting"                   Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Console"                        Version="5.0.0" />
     <PackageReference Include="Serilog.Sinks.File"                           Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="sys.ini">
+    <!-- sys.ini is gitignored (it holds real secrets); a fresh clone only has the template,
+         so the include must be conditional or the build breaks. -->
+    <Content Include="sys.ini.example">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="sys.ini" Condition="Exists('sys.ini')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
